@@ -296,13 +296,15 @@ function borrarMascota(){ if(!confirm("¿Quitar a "+S.mascotas[sub].nombre+"?"))
 function vPedir(){
   if(!S.mascotas.length) return `<div class="tarjeta"><div class="vacio"><div class="em">🐾</div><p>Primero registra a tu mascota para que sepamos a quién llevamos.</p></div>
     <button class="btn prim" onclick="ir('mascotas');editarMascota(-1)">+ Agregar mascota</button></div>`;
-  if(temp.pedido===undefined){ const u=S.usuario; temp={pedido:true,mascotas:[0],viaje:"Sencillo",origen:(u.colonia?u.colonia+", ":"")+u.municipio,destino:"",fecha:"",notas:""}; }
+  if(temp.pedido===undefined){ const u=S.usuario; temp={pedido:true,mascotas:[0],viaje:"Sencillo",compania:"",origen:"",destino:"",fecha:"",notas:""}; }
   return `<div class="tarjeta">
     <label style="margin-top:0">¿Quién viaja?</label>
     <div class="opciones">${S.mascotas.map((m,i)=>`<button type="button" class="${temp.mascotas.includes(i)?"on":""}" onclick="leerPedido();togMascota(${i})">${emo(m.tipo)} ${esc(m.nombre)}</button>`).join("")}</div>
     <label>Tipo de viaje</label>
     <div class="opciones">${["Sencillo","Redondo","Con espera"].map(v=>`<button type="button" class="${temp.viaje===v?"on":""}" onclick="leerPedido();temp.viaje='${v}';render()">${v}</button>`).join("")}</div>
-    <label for="pOri">¿Dónde lo recogemos?</label><input id="pOri" type="text" value="${esc(temp.origen)}" placeholder="Dirección o colonia">
+    <label>¿Viaja solo o acompañado?</label>
+    <div class="opciones">${[["Solo","🐾 Solo"],["Acompañado","👤 Con acompañante"]].map(([v,t])=>`<button type="button" class="${temp.compania===v?"on":""}" onclick="leerPedido();temp.compania='${v}';render()">${t}</button>`).join("")}</div>
+    <label for="pOri">¿Dónde lo recogemos?</label><input id="pOri" type="text" value="${esc(temp.origen)}" placeholder="Ej. Río Nilo 123, Col. Del Valle">
     <label for="pDes">¿A dónde va?</label><input id="pDes" type="text" value="${esc(temp.destino)}" placeholder="Ej. Estética Huellitas, San Pedro">
     <label for="pFec">Día y hora</label><input id="pFec" type="datetime-local" value="${esc(temp.fecha)}">
     <label for="pNot">Notas <small>(opcional)</small></label><textarea id="pNot" placeholder="Algo que debamos saber">${esc(temp.notas)}</textarea>
@@ -315,12 +317,13 @@ function leerPedido(){ if(!$("#pOri"))return; temp.origen=$("#pOri").value; temp
 function togMascota(i){ const k=temp.mascotas.indexOf(i); if(k>=0){ if(temp.mascotas.length>1) temp.mascotas.splice(k,1); } else temp.mascotas.push(i); render(); }
 function fechaBonita(v){ if(!v) return "Por definir"; const d=new Date(v); return d.toLocaleString("es-MX",{weekday:"long",day:"numeric",month:"long",hour:"numeric",minute:"2-digit"}); }
 function enviarPedido(){
-  leerPedido(); if(!temp.destino.trim()) return toast("Escribe a dónde va");
+  leerPedido(); if(!temp.compania) return toast("Elige si viaja solo o acompañado");
+  if(!temp.destino.trim()) return toast("Escribe a dónde va");
   if(!temp.origen.trim()) return toast("Escribe dónde lo recogemos");
   const u=S.usuario, ms=temp.mascotas.map(i=>S.mascotas[i]);
   let t=`🐾 *Solicitud de traslado PetMTY*\n👤 ${u.nombre}\n`;
   ms.forEach(m=>{ t+=`${emo(m.tipo)} ${m.nombre} · ${m.tipo==="gato"?"gato":"perro"} ${m.tamano}${m.pelo?", pelo "+m.pelo:""}\n`; if(m.caracter) t+=`   📝 ${m.caracter}\n`; if(m.notas) t+=`   💊 ${m.notas}\n`; });
-  t+=`📍 Origen: ${temp.origen.trim()}\n📍 Destino: ${temp.destino.trim()}\n📅 ${fechaBonita(temp.fecha)}\n🔁 Viaje: ${temp.viaje}`;
+  t+=`${temp.compania==="Solo"?(ms.length>1?"🐾 Viajan solos":"🐾 Viaja solo"):(ms.length>1?"👤 Viajan con acompañante":"👤 Viaja con acompañante")}\n📍 Origen: ${temp.origen.trim()}\n📍 Destino: ${temp.destino.trim()}\n📅 ${fechaBonita(temp.fecha)}\n🔁 Viaje: ${temp.viaje}`;
   if(temp.notas.trim()) t+=`\n🗒️ ${temp.notas.trim()}`;
   S.viajes.push({mascotas:ms.map(m=>m.nombre).join(", "),destino:temp.destino.trim(),cuando:temp.fecha?new Date(temp.fecha).toLocaleDateString("es-MX",{day:"numeric",month:"short"}):"Por definir"});
   guardar(); temp={}; location.href=wa(t);
@@ -345,11 +348,14 @@ function reportar(){
 
 /* ---------- Tienda ---------- */
 function vTienda(){
-  if(!PRODUCTOS.length) return `<div class="tarjeta"><div class="vacio"><div class="em">🛒</div><b style="display:block;font-size:1.3rem;color:var(--texto)">¡Muy pronto!</b><p>Estamos preparando productos para que tu mascota viaje cómoda y segura.</p></div>
-    <a class="btn wa" href="${wa("Hola, quiero información sobre la tiendita de PetMTY 🛒")}">${ICO.wa} Pregúntanos por WhatsApp</a></div>`;
-  return `<div class="tarjeta">${PRODUCTOS.map(p=>`<div class="fila"><div class="av"><img src="${esc(p.foto)}" alt=""></div><div class="txt"><b>${esc(p.nombre)}</b><span>${esc(p.precio)}</span></div><a class="chip" href="${wa("Hola, quiero comprar: "+p.nombre+" 🛒")}">Lo quiero</a></div>`).join("")}</div>`;
+  return `<div class="tarjeta" style="text-align:center">
+    <div class="vacio" style="padding-top:6px"><div class="em">🛒</div><b style="display:block;font-size:1.35rem;color:var(--texto)">Tiendita PetMTY</b>
+    <p>Productos para que tu mascota viaje cómoda y segura. Mira el catálogo y pídelo por WhatsApp: te lo llevamos a tu casa.</p></div>
+    <a class="btn wa" href="https://wa.me/c/${WA_NUM}">${ICO.wa} Ver catálogo en WhatsApp</a>
+    <a class="btn claro" href="${wa("Hola, quiero información sobre los productos de la tiendita PetMTY 🛒")}">Tengo una pregunta</a>
+  </div>
+  <div class="tarjeta"><h2>🚐 Entrega en tu zona</h2><p class="muted" style="margin:0">Entregamos en Monterrey y su área metropolitana. Si agendas un traslado, pregúntanos por llevarte tu pedido en el mismo viaje.</p></div>`;
 }
-
 /* ---------- Perfil ---------- */
 function vPerfil(){
   const u=S.usuario;
@@ -367,7 +373,7 @@ function vPerfil(){
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem">PetMTY · versión de prueba 0.3</p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem">PetMTY · versión de prueba 0.4</p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu cuenta y tus mascotas de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; render(); }
 
