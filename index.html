@@ -121,6 +121,13 @@ textarea{min-height:80px;resize:vertical}
 .alerta-card{display:flex;gap:12px;align-items:center;background:#FFF1F1;border-radius:18px;padding:12px;margin-bottom:10px}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .alerta-card{background:#3A2224}}
 .alerta-card .av{background:#fff}
+.especial-cab{display:flex;align-items:center;gap:14px}
+.especial-ico{flex:0 0 auto;width:60px;height:60px;border-radius:50%;background:#FDE7EF;display:grid;place-items:center;font-size:1.8rem}
+.especial-cab b{display:block;font-size:1.35rem;font-weight:700;line-height:1.15}
+.etiqueta{display:inline-block;margin-top:4px;background:var(--amarillo);color:var(--tinta);font-size:.8rem;font-weight:600;padding:2px 10px;border-radius:999px}
+.especial-txt{margin:14px 0 10px;color:var(--suave);font-size:1.05rem}
+.especial-lista{list-style:none;margin:0 0 20px;padding:0}
+.especial-lista li{padding:6px 0;font-size:1.03rem}
 #toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tinta);color:#fff;padding:11px 18px;border-radius:999px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
 </style>
@@ -239,7 +246,20 @@ function emergencia(){
   const u=S.usuario;
   location.href = wa(`🚨 *URGENTE* · Necesito un traslado de emergencia para mi mascota.\n👤 ${u.nombre}\n📍 ${u.colonia?u.colonia+", ":""}${u.municipio}`);
 }
-function bodas(){ location.href = wa("💍 Hola, me voy a casar y quiero información sobre el servicio de mascotas en bodas 🐶"); }
+function bodas(){ ir("bodas"); }
+function vBodas(){
+  return `<div class="tarjeta">
+    <div class="especial-cab"><span class="especial-ico" aria-hidden="true">💍</span><div><b>Tu mascota en tu boda</b><span class="etiqueta">Nuevo</span></div></div>
+    <p class="especial-txt">Que tus perros sean parte del gran día sin que nadie de tu familia se pierda la fiesta. Los llevamos a la ceremonia, los cuidamos durante el evento y los regresamos a casa.</p>
+    <ul class="especial-lista">
+      <li>🚐 Traslado de ida y vuelta</li>
+      <li>🤝 Cuidador durante la ceremonia y las fotos</li>
+      <li>🎀 Opción de baño previo y accesorio de boda</li>
+      <li>🌙 Opción de cuidarlos esa noche, ¡por si la fiesta sigue!</li>
+    </ul>
+    <a class="btn prim" href="${wa("💍 Hola, me voy a casar y quiero información sobre el servicio de mascotas en bodas 🐶")}">Cotiza tu boda</a>
+  </div>`;
+}
 
 /* ---------- Mascotas ---------- */
 function filaMascota(m,i){
@@ -373,18 +393,18 @@ function vPerfil(){
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem">PetMTY · versión de prueba 0.4</p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem">PetMTY · versión de prueba 0.5</p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu cuenta y tus mascotas de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; render(); }
 
 /* ---------- Navegación ---------- */
-const TITULOS={inicio:"PetMTY",mascotas:"Mis mascotas",pedir:"Pedir traslado",tienda:"Tiendita",alertas:"Alertas",perfil:"Mi perfil"};
+const TITULOS={bodas:"Servicios especiales",inicio:"PetMTY",mascotas:"Mis mascotas",pedir:"Pedir traslado",tienda:"Tiendita",alertas:"Alertas",perfil:"Mi perfil"};
 function ir(v){ vista=v; sub=null; temp={}; render(); window.scrollTo(0,0); }
 function render(){
   const r=$("#raiz");
   if(!S.usuario){ r.innerHTML = temp.paso ? pantallaRegistro() : pantallaBienvenida(); return; }
-  const cuerpo={inicio:vInicio,mascotas:vMascotas,pedir:vPedir,tienda:vTienda,alertas:vAlertas,perfil:vPerfil}[vista]();
-  const atras = (vista==="mascotas"&&sub!==null) ? `<button class="atras" aria-label="Atrás" onclick="sub=null;temp={};render()">‹</button>` : (vista==="alertas"?`<button class="atras" aria-label="Atrás" onclick="ir('inicio')">‹</button>`:"");
+  const cuerpo={bodas:vBodas,inicio:vInicio,mascotas:vMascotas,pedir:vPedir,tienda:vTienda,alertas:vAlertas,perfil:vPerfil}[vista]();
+  const atras = (vista==="mascotas"&&sub!==null) ? `<button class="atras" aria-label="Atrás" onclick="sub=null;temp={};render()">‹</button>` : ((vista==="alertas"||vista==="bodas")?`<button class="atras" aria-label="Atrás" onclick="ir('inicio')">‹</button>`:"");
   const tit = vista==="mascotas"&&sub!==null ? (sub>=0?"Editar mascota":"Nueva mascota") : TITULOS[vista];
   const nb=(v,ic,t)=>`<button class="${vista===v?"on":""}" onclick="ir('${v}')" aria-label="${t}">${ICO[ic]}<span>${t}</span></button>`;
   r.innerHTML = `<div class="app">
