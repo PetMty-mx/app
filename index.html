@@ -160,6 +160,7 @@ input::-webkit-datetime-edit{padding:0}
 #toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tinta);color:#fff;padding:11px 18px;border-radius:999px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
 </style>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 </head>
 <body>
 <div id="raiz"></div>
@@ -248,6 +249,8 @@ function terminarRegistro(){
   if(!temp.municipio) return toast("Elige tu municipio");
   S.usuario = {nombre:temp.nombre, municipio:temp.municipio, colonia:temp.colonia, alertas:temp.alertas, desde:new Date().toISOString()};
   guardar(); vista="inicio"; sub=null; render(); toast("¡Bienvenido a PetMTY! 🐾");
+  sincronizarAvisos(); if(temp.alertas&&OS&&AV.soportado&&!AV.permiso) activarAvisos();
+  abrirEnlace();
 }
 
 /* ---------- Inicio ---------- */
@@ -260,6 +263,7 @@ function vInicio(){
     <p style="margin:0 0 14px">Cómodo, seguro y con mucho amor. Te cotizamos por WhatsApp en minutos.</p>
     <button class="btn prim" onclick="ir('pedir')">Pedir traslado</button>
   </div>
+  ${(OS&&AV.soportado&&!AV.permiso)?`<div class="tarjeta"><h2>🔔 Activa los avisos</h2><p style="margin:0 0 14px">Entérate al momento si se pierde una mascota en ${esc(u.municipio)}, y de nuestras promociones.</p><button class="btn azul" onclick="activarAvisos()">Activar avisos</button></div>`:""}
   <div class="rapidos">
     <button class="rapido" onclick="emergencia()"><span class="em">🚨</span><b>Emergencia</b><span>Llévalo rápido al vet</span></button>
     <button class="rapido" onclick="bodas()"><span class="em">💍</span><b>Bodas</b><span>Tu perro en tu boda</span></button>
@@ -487,17 +491,17 @@ function vPerfil(){
   </div>
   <div class="tarjeta">
     <label for="peMun" style="margin-top:0">Municipio</label>
-    <select id="peMun" onchange="S.usuario.municipio=this.value;guardar();toast('Municipio actualizado')">${MUNICIPIOS.map(m=>`<option ${m===u.municipio?"selected":""}>${m}</option>`).join("")}</select>
+    <select id="peMun" onchange="S.usuario.municipio=this.value;guardar();sincronizarAvisos();toast('Municipio actualizado')">${MUNICIPIOS.map(m=>`<option ${m===u.municipio?"selected":""}>${m}</option>`).join("")}</select>
     <label for="peCol">Colonia</label><input id="peCol" type="text" value="${esc(u.colonia)}" onchange="S.usuario.colonia=this.value.trim();guardar();toast('Colonia actualizada')">
-    <div class="interruptor" style="margin-top:14px"><span>🔔 Alertas de mascotas perdidas en mi zona</span><input type="checkbox" ${u.alertas?"checked":""} onchange="S.usuario.alertas=this.checked;guardar()"></div>
+    <div class="interruptor" style="margin-top:14px"><span>🔔 Alertas de mascotas perdidas en mi zona</span><input type="checkbox" ${u.alertas?"checked":""} onchange="S.usuario.alertas=this.checked;guardar();sincronizarAvisos();if(this.checked&&OS&&AV.soportado&&!AV.permiso)activarAvisos()"></div>
   </div>
   <div class="tarjeta">
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br>PetMTY · versión 1.0</p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br>PetMTY · versión 1.1</p>`;
 }
-function borrarCuenta(){ if(!confirm("Se borrarán tu perfil, tus mascotas y tus solicitudes de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; render(); }
+function borrarCuenta(){ if(!confirm("Se borrarán tu perfil, tus mascotas y tus solicitudes de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; try{ if(OS){ OS.User.removeTags(["municipio","alertas"]); OS.User.PushSubscription.optOut(); } }catch(e){} render(); }
 
 /* ---------- Navegación ---------- */
 const TITULOS={alerta:"Mascota perdida",bodas:"Servicios especiales",inicio:"PetMTY",mascotas:"Mis mascotas",pedir:"Pedir traslado",tienda:"Tiendita",alertas:"Alertas",perfil:"Mi perfil"};
@@ -518,7 +522,59 @@ function render(){
       ${nb("tienda","bolsa","Tienda")}${nb("perfil","yo","Perfil")}
     </nav></div>`;
 }
-render();
+/* ---------- Notificaciones (OneSignal) ---------- */
+const ONESIGNAL_APP_ID = "2c0d390d-7148-478e-bf6f-731b1774dd85";
+let OS = null;
+const AV = {soportado:false, permiso:false};
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal){
+  try{
+    await OneSignal.init({
+      appId: ONESIGNAL_APP_ID,
+      serviceWorkerPath: "app/sw.js",
+      serviceWorkerParam: {scope: "/app/"},
+      notifyButton: {enable:false},
+      welcomeNotification: {disable:true},
+      promptOptions: {slidedown: {prompts: [{type:"push", autoPrompt:false}]}}
+    });
+    OS = OneSignal;
+    AV.soportado = OneSignal.Notifications.isPushSupported();
+    AV.permiso = OneSignal.Notifications.permission;
+    OneSignal.Notifications.addEventListener("permissionChange", p => { AV.permiso = p; sincronizarAvisos(); render(); });
+    sincronizarAvisos(); render();
+  }catch(e){}
+});
+/* Etiquetas para mandar por zona: municipio y si quiere alertas de mascotas perdidas */
+function sincronizarAvisos(){
+  if(!OS || !S.usuario) return;
+  try{ OS.User.addTags({municipio:S.usuario.municipio, alertas:S.usuario.alertas?"si":"no"}); }catch(e){}
+}
+async function activarAvisos(){
+  if(!OS) return toast("Los avisos no están disponibles aquí");
+  try{
+    await OS.Notifications.requestPermission();
+    AV.permiso = OS.Notifications.permission;
+    if(AV.permiso){ S.usuario.alertas = true; guardar(); sincronizarAvisos(); toast("¡Listo! Te avisaremos 🔔"); }
+    render();
+  }catch(e){}
+}
+
+/* ---------- Enlaces directos (para notificaciones): petmty.mx/app/#tienda, #alerta-rocky ---------- */
+function slug(t){ return String(t).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); }
+function abrirEnlace(){
+  const h = decodeURIComponent(location.hash.slice(1)).toLowerCase();
+  if(!h || !S.usuario) return false;
+  history.replaceState(null, "", location.pathname + location.search);
+  if(h.startsWith("alerta-")){
+    const k = ALERTAS.findIndex(a => (a.id || slug(a.nombre)) === h.slice(7));
+    if(k >= 0){ desde = "alertas"; vista = "alerta"; sub = k; temp = {}; render(); window.scrollTo(0,0); return true; }
+    ir("alertas"); return true;
+  }
+  if(TITULOS[h] && h !== "alerta"){ ir(h); return true; }
+  return false;
+}
+window.addEventListener("hashchange", abrirEnlace);
+if(!abrirEnlace()) render();
 if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
