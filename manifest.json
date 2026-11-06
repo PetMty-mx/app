@@ -1,4 +1,5 @@
 {
+  "id": "/app/",
   "name": "PetMTY",
   "short_name": "PetMTY",
   "description": "Transporte y todo lo que tu mascota necesita en Monterrey.",
@@ -28,5 +29,10 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "categories": [
+    "lifestyle",
+    "travel",
+    "shopping"
   ]
 }
