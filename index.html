@@ -523,7 +523,7 @@ function vPerfil(){
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br>PetMTY · versión 1.3.1</p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br><span onclick="diagnostico()">PetMTY · versión 1.3.2</span></p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu perfil, tus mascotas y tus solicitudes de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; try{ if(OS){ OS.User.removeTags(["municipio","alertas"]); OS.User.PushSubscription.optOut(); } }catch(e){} render(); }
 
@@ -571,7 +571,7 @@ OneSignalDeferred.push(async function(OneSignal){
     OS = OneSignal;
     OneSignal.Notifications.addEventListener("permissionChange", () => { leerPermiso(); sincronizarAvisos(); render(); });
     leerPermiso(); sincronizarAvisos(); render();
-  }catch(e){}
+  }catch(e){ window.__osErr = String(e && (e.message || e)); }
 });
 /* Etiquetas para mandar por zona: municipio y si quiere alertas de mascotas perdidas */
 function sincronizarAvisos(){
@@ -590,6 +590,21 @@ async function activarAvisos(){
   leerPermiso();
   if(AV.permiso){ S.usuario.alertas = true; guardar(); sincronizarAvisos(); toast("¡Listo! Te avisaremos 🔔"); }
   render();
+}
+
+/* Diagnóstico: tocar 5 veces la versión en Perfil */
+let __toques = 0;
+async function diagnostico(){
+  if(++__toques < 5) return; __toques = 0;
+  let sw = "?";
+  try{ const r = await navigator.serviceWorker.getRegistrations(); sw = r.map(x => (x.active||x.installing||x.waiting||{}).scriptURL).join(", ") || "ninguno"; }catch(e){ sw = "error"; }
+  let id = "-", opt = "-";
+  try{ id = OS ? (OS.User.PushSubscription.id || "sin id") : "-"; opt = OS ? String(OS.User.PushSubscription.optedIn) : "-"; }catch(e){}
+  alert("Diagnóstico PetMTY\n\nSDK cargado: " + (window.OneSignal ? "sí" : "no") +
+    "\nIniciado: " + (OS ? "sí" : "no") +
+    "\nError: " + (window.__osErr || "ninguno") +
+    "\nPermiso: " + (("Notification" in window) ? Notification.permission : "no soportado") +
+    "\nSuscripción: " + id + "\nActiva: " + opt + "\nService worker: " + sw);
 }
 
 /* ---------- Pregunta amable antes del permiso del celular ---------- */
