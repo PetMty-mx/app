@@ -87,6 +87,9 @@ label{display:block;font-weight:600;margin:14px 0 6px}
 label small{font-weight:400;color:var(--suave)}
 input[type=text],input[type=tel],input[type=email],input[type=datetime-local],input[type=date],select,textarea{width:100%;padding:13px 14px;border-radius:14px;border:1.5px solid var(--linea);background:var(--hoja);font-size:1rem}
 textarea{min-height:80px;resize:vertical}
+input[type=datetime-local],input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:52px;text-align:left}
+input::-webkit-date-and-time-value{text-align:left;margin:0}
+input::-webkit-datetime-edit{padding:0}
 .opciones{display:flex;flex-wrap:wrap;gap:8px}
 .opciones button{border:1.5px solid var(--linea);background:var(--hoja);border-radius:999px;padding:9px 14px;font-weight:500;cursor:pointer}
 .opciones button.on{background:var(--azul);border-color:var(--azul);color:#fff}
@@ -418,7 +421,7 @@ function vPedir(){
     <div style="margin-top:20px"><button class="btn wa" onclick="enviarPedido()">${ICO.wa} Cotizar por WhatsApp</button></div>
     <p class="muted" style="text-align:center;font-size:.9rem;margin:12px 0 0">Te llega a WhatsApp con todos los datos para cotizarte rápido.</p>
   </div>
-  ${S.viajes.length?`<div class="tarjeta"><h2>🕑 Tus solicitudes</h2>${S.viajes.slice(-5).reverse().map(v=>`<div class="fila"><div class="av">🚐</div><div class="txt"><b>${esc(v.mascotas)}</b><span>${esc(v.destino)} · ${esc(v.cuando)}</span></div></div>`).join("")}</div>`:""}`;
+  ${S.viajes.length?`<div class="tarjeta"><h2>🕑 Tus solicitudes</h2>${S.viajes.slice(-5).reverse().map(v=>`<div class="fila"><div class="av">🚐</div><div class="txt"><b>${esc(v.mascotas)}</b><span style="display:block">📍 ${esc(v.destino)}</span><span style="display:block">📅 ${v.cuando&&v.cuando!=="Por definir"?esc(v.cuando):"Sin fecha · la acordamos por WhatsApp"}</span><span class="chip">📨 Enviada por WhatsApp</span></div></div>`).join("")}<p class="muted" style="margin:10px 0 0;font-size:.88rem">Aquí ves lo que nos has pedido. La cotización y la confirmación te llegan por WhatsApp.</p></div>`:""}`;
 }
 function leerPedido(){ if(!$("#pOri"))return; temp.origen=$("#pOri").value; temp.destino=$("#pDes").value; temp.fecha=$("#pFec").value; temp.notas=$("#pNot").value; }
 function togMascota(i){ const k=temp.mascotas.indexOf(i); if(k>=0){ if(temp.mascotas.length>1) temp.mascotas.splice(k,1); } else temp.mascotas.push(i); render(); }
@@ -432,7 +435,7 @@ function enviarPedido(){
   ms.forEach(m=>{ t+=`${emo(m.tipo)} ${m.nombre} · ${m.tipo==="gato"?"gato":"perro"} ${m.tamano}${m.pelo?", pelo "+m.pelo:""}\n`; if(m.caracter) t+=`   📝 ${m.caracter}\n`; if(m.notas) t+=`   💊 ${m.notas}\n`; });
   t+=`${temp.compania==="Solo"?(ms.length>1?"🐾 Viajan solos":"🐾 Viaja solo"):(ms.length>1?"👤 Viajan con acompañante":"👤 Viaja con acompañante")}\n📍 Origen: ${temp.origen.trim()}\n📍 Destino: ${temp.destino.trim()}\n📅 ${fechaBonita(temp.fecha)}\n🔁 Viaje: ${temp.viaje}`;
   if(temp.notas.trim()) t+=`\n🗒️ ${temp.notas.trim()}`;
-  S.viajes.push({mascotas:ms.map(m=>m.nombre).join(", "),destino:temp.destino.trim(),cuando:temp.fecha?new Date(temp.fecha).toLocaleDateString("es-MX",{day:"numeric",month:"short"}):"Por definir"});
+  S.viajes.push({mascotas:ms.map(m=>m.nombre).join(", "),destino:temp.destino.trim(),cuando:temp.fecha?new Date(temp.fecha).toLocaleString("es-MX",{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}):"",enviado:Date.now()});
   guardar(); temp={}; location.href=wa(t);
 }
 
@@ -477,7 +480,7 @@ function vPerfil(){
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem">PetMTY · versión de prueba 0.10</p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem">PetMTY · versión de prueba 0.11</p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu cuenta y tus mascotas de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; render(); }
 
