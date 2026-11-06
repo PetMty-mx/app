@@ -159,6 +159,30 @@ input::-webkit-datetime-edit{padding:0}
 .lovi:disabled{opacity:.7}
 #toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tinta);color:#fff;padding:11px 18px;border-radius:999px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;max-width:90vw;text-align:center}
 #toast.on{opacity:1}
+.av-capa{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column}
+.av-completa{background:var(--azul);color:#fff;align-items:center;justify-content:center;padding:calc(30px + env(safe-area-inset-top,0px)) 26px calc(26px + env(safe-area-inset-bottom,0px));text-align:center}
+.av-completa .av-cont{max-width:380px;width:100%;display:flex;flex-direction:column;align-items:center;flex:1}
+.av-fondo{background:rgba(10,25,32,.5);justify-content:flex-end}
+.av-hoja{background:var(--hoja);color:var(--texto);border-radius:24px 24px 0 0;padding:16px 22px calc(24px + env(safe-area-inset-bottom,0px));text-align:center;animation:subir .25s ease-out}
+@keyframes subir{from{transform:translateY(100%)}to{transform:none}}
+.av-asa{width:40px;height:4px;border-radius:2px;background:var(--linea);margin:0 auto 14px}
+.av-ico{width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;position:relative;margin:0 auto 18px}
+.av-ico img{width:84px;height:84px;object-fit:contain}
+.av-ico .camp{position:absolute;right:-12px;top:-8px;width:44px;height:44px;border-radius:50%;background:var(--amarillo);display:flex;align-items:center;justify-content:center;font-size:24px;animation:sonar 1.4s ease-in-out infinite}
+@keyframes sonar{0%,60%,100%{transform:rotate(0)}10%,30%{transform:rotate(14deg)}20%,40%{transform:rotate(-14deg)}}
+.av-hoja .av-ico{width:76px;height:76px;background:var(--circulo)}
+.av-hoja .av-ico img{width:54px;height:54px}
+.av-hoja .av-ico .camp{width:32px;height:32px;font-size:17px}
+.av-tit{font-size:1.7rem;font-weight:700;margin:0 0 10px}
+.av-hoja .av-tit{font-size:1.3rem}
+.av-txt{margin:0 0 8px;line-height:1.5}
+.av-no{background:none;border:0;color:inherit;opacity:.9;text-decoration:underline;font:inherit;padding:10px;cursor:pointer;margin-top:4px}
+.av-demo{background:#fff;color:#22343D;border-radius:18px;padding:16px;margin:16px auto 6px;max-width:280px;text-align:left;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.av-demo p{margin:0 0 12px;font-size:.95rem}
+.av-demo .bts{display:flex;justify-content:flex-end;gap:18px;font-weight:600;font-size:.95rem}
+.av-demo .si{color:#0A6CD1;border:3px solid #F6C543;border-radius:10px;padding:2px 8px;animation:latir 1.2s ease-in-out infinite}
+@keyframes latir{50%{transform:scale(1.08)}}
+.av-hoja .av-demo{background:var(--fondo);color:var(--texto);box-shadow:none}
 </style>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 </head>
@@ -248,9 +272,9 @@ function terminarRegistro(){
   temp.colonia = $("#rCol").value.trim(); temp.alertas = $("#rAl").checked;
   if(!temp.municipio) return toast("Elige tu municipio");
   S.usuario = {nombre:temp.nombre, municipio:temp.municipio, colonia:temp.colonia, alertas:temp.alertas, desde:new Date().toISOString()};
-  guardar(); vista="inicio"; sub=null; render(); toast("¡Bienvenido a PetMTY! 🐾");
-  sincronizarAvisos(); if(temp.alertas&&AV.soportado&&!AV.permiso) activarAvisos();
-  abrirEnlace();
+  guardar(); vista="inicio"; sub=null; render();
+  sincronizarAvisos();
+  if(!abrirEnlace() && !preguntar("completa","registro")) toast("¡Bienvenido a PetMTY! 🐾");
 }
 
 /* ---------- Inicio ---------- */
@@ -263,7 +287,7 @@ function vInicio(){
     <p style="margin:0 0 14px">Cómodo, seguro y con mucho amor. Te cotizamos por WhatsApp en minutos.</p>
     <button class="btn prim" onclick="ir('pedir')">Pedir traslado</button>
   </div>
-  ${(AV.soportado&&!AV.permiso)?(AV.bloqueado?`<div class="tarjeta"><h2>🔔 Tus avisos están apagados</h2><p style="margin:0">Para enterarte si se pierde una mascota en ${esc(u.municipio)}, ve a los <b>Ajustes</b> de tu celular → <b>Apps</b> → <b>PetMTY</b> → <b>Notificaciones</b> y actívalas.</p></div>`:`<div class="tarjeta"><h2>🔔 Activa los avisos</h2><p style="margin:0 0 14px">Entérate al momento si se pierde una mascota en ${esc(u.municipio)}, y de nuestras promociones.</p><button class="btn azul" onclick="activarAvisos()">Activar avisos</button></div>`):""}
+  ${(AV.soportado&&!AV.permiso)?(AV.bloqueado?`<div class="tarjeta"><h2>🔔 Tus avisos están apagados</h2><p style="margin:0">Para enterarte si se pierde una mascota en ${esc(u.municipio)}, ve a los <b>Ajustes</b> de tu celular → <b>Apps</b> → <b>PetMTY</b> → <b>Notificaciones</b> y actívalas.</p></div>`:`<div class="tarjeta"><h2>🔔 Activa los avisos</h2><p style="margin:0 0 14px">Entérate al momento si se pierde una mascota en ${esc(u.municipio)}, y de nuestras promociones.</p><button class="btn azul" onclick="pedirPermiso('hoja')">Activar avisos</button></div>`):""}
   <div class="rapidos">
     <button class="rapido" onclick="emergencia()"><span class="em">🚨</span><b>Emergencia</b><span>Llévalo rápido al vet</span></button>
     <button class="rapido" onclick="bodas()"><span class="em">💍</span><b>Bodas</b><span>Tu perro en tu boda</span></button>
@@ -447,7 +471,7 @@ function enviarPedido(){
   t+=`${temp.compania==="Solo"?(ms.length>1?"🐾 Viajan solos":"🐾 Viaja solo"):(ms.length>1?"👤 Viajan con acompañante":"👤 Viaja con acompañante")}\n📍 Origen: ${temp.origen.trim()}\n📍 Destino: ${temp.destino.trim()}\n📅 ${fechaBonita(temp.fecha)}\n🔁 Viaje: ${temp.viaje}`;
   if(temp.notas.trim()) t+=`\n🗒️ ${temp.notas.trim()}`;
   S.viajes.push({mascotas:ms.map(m=>m.nombre).join(", "),destino:temp.destino.trim(),cuando:temp.fecha?new Date(temp.fecha).toLocaleString("es-MX",{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}):"",enviado:Date.now()});
-  guardar(); temp={}; location.href=wa(t);
+  av().viaje = true; guardar(); temp={}; location.href=wa(t);
 }
 
 /* ---------- Alertas ---------- */
@@ -493,19 +517,19 @@ function vPerfil(){
     <label for="peMun" style="margin-top:0">Municipio</label>
     <select id="peMun" onchange="S.usuario.municipio=this.value;guardar();sincronizarAvisos();toast('Municipio actualizado')">${MUNICIPIOS.map(m=>`<option ${m===u.municipio?"selected":""}>${m}</option>`).join("")}</select>
     <label for="peCol">Colonia</label><input id="peCol" type="text" value="${esc(u.colonia)}" onchange="S.usuario.colonia=this.value.trim();guardar();toast('Colonia actualizada')">
-    <div class="interruptor" style="margin-top:14px"><span>🔔 Alertas de mascotas perdidas en mi zona</span><input type="checkbox" ${u.alertas?"checked":""} onchange="S.usuario.alertas=this.checked;guardar();sincronizarAvisos();if(this.checked&&AV.soportado&&!AV.permiso)activarAvisos()"></div>
+    <div class="interruptor" style="margin-top:14px"><span>🔔 Alertas de mascotas perdidas en mi zona</span><input type="checkbox" ${u.alertas?"checked":""} onchange="S.usuario.alertas=this.checked;guardar();sincronizarAvisos();if(this.checked&&AV.soportado&&!AV.permiso)pedirPermiso('hoja')"></div>
   </div>
   <div class="tarjeta">
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br>PetMTY · versión 1.2</p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br>PetMTY · versión 1.3</p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu perfil, tus mascotas y tus solicitudes de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; try{ if(OS){ OS.User.removeTags(["municipio","alertas"]); OS.User.PushSubscription.optOut(); } }catch(e){} render(); }
 
 /* ---------- Navegación ---------- */
 const TITULOS={alerta:"Mascota perdida",bodas:"Servicios especiales",inicio:"PetMTY",mascotas:"Mis mascotas",pedir:"Pedir traslado",tienda:"Tiendita",alertas:"Alertas",perfil:"Mi perfil"};
-function ir(v){ vista=v; sub=null; temp={}; render(); window.scrollTo(0,0); }
+function ir(v){ vista=v; sub=null; temp={}; render(); window.scrollTo(0,0); if(v==="alertas") preguntar("hoja","alertas"); }
 function render(){
   const r=$("#raiz");
   if(!S.usuario){ r.innerHTML = temp.paso ? pantallaRegistro() : pantallaBienvenida(); return; }
@@ -520,7 +544,7 @@ function render(){
       ${nb("inicio","casa","Inicio")}${nb("mascotas","huella","Mascotas")}
       <button class="centro" onclick="ir('pedir')" aria-label="Pedir traslado"><span class="bola"><img src="${CARRO}" alt=""></span><small>Pedir</small></button>
       ${nb("tienda","bolsa","Tienda")}${nb("perfil","yo","Perfil")}
-    </nav></div>`;
+    </nav></div>${htmlPreg()}`;
 }
 /* ---------- Notificaciones (OneSignal) ---------- */
 const ONESIGNAL_APP_ID = "2c0d390d-7148-478e-bf6f-731b1774dd85";
@@ -567,6 +591,69 @@ async function activarAvisos(){
   render();
 }
 
+/* ---------- Pregunta amable antes del permiso del celular ---------- */
+/* PREG = {modo:"completa"|"hoja", estado:"pregunta"|"esperando"|"listo"|"no"|"bloqueado", ctx} */
+let PREG = null;
+const DIAS_ENTRE = 3, MAX_PREGUNTAS = 3;
+function av(){ if(!S.avisos) S.avisos = {pregunto:0, ultimo:0, viaje:false}; return S.avisos; }
+function puedePreguntar(){
+  leerPermiso();
+  const a = av();
+  return S.usuario && AV.soportado && !AV.permiso && !AV.bloqueado && a.pregunto < MAX_PREGUNTAS && (a.pregunto === 0 || Date.now() - a.ultimo > DIAS_ENTRE*864e5);
+}
+function preguntar(modo, ctx){
+  if(PREG || !puedePreguntar()) return false;
+  const a = av(); a.pregunto++; a.ultimo = Date.now(); guardar();
+  PREG = {modo, estado:"pregunta", ctx}; render(); return true;
+}
+function pedirPermiso(modo){
+  leerPermiso();
+  if(AV.permiso){ toast("Tus avisos ya están activados 🔔"); return; }
+  if(!AV.soportado){ toast("Tu celular no permite avisos desde aquí"); return; }
+  if(AV.bloqueado){ PREG = {modo:modo||"hoja", estado:"bloqueado"}; render(); return; }
+  let prom; try{ prom = Notification.requestPermission(); }catch(e){}
+  PREG = Object.assign(PREG || {modo:modo||"hoja"}, {estado:"esperando"}); render();
+  Promise.resolve(prom).then(() => {
+    leerPermiso();
+    if(AV.permiso){ S.usuario.alertas = true; guardar(); sincronizarAvisos(); PREG.estado = "listo"; render(); setTimeout(() => { if(PREG && PREG.estado === "listo"){ PREG = null; render(); } }, 1800); }
+    else if(AV.bloqueado){ PREG.estado = "bloqueado"; render(); }
+    else { PREG.estado = "no"; render(); }
+  });
+}
+function cerrarPreg(){ PREG = null; render(); }
+function htmlPreg(){
+  if(!PREG) return "";
+  const u = S.usuario, m = esc(u.municipio), comp = PREG.modo === "completa";
+  const ico = `<div class="av-ico"><img src="${PERRO}" alt=""><span class="camp">🔔</span></div>`;
+  const btn = (t, f, cls) => `<button class="btn ${cls||(comp?"prim":"azul")}" onclick="${f}">${t}</button>`;
+  let c = "";
+  if(PREG.estado === "pregunta"){
+    const tit = PREG.ctx === "viaje" ? "¡Gracias por viajar con nosotros!" : PREG.ctx === "alertas" ? "¿Te avisamos al momento?" : "¿Te avisamos?";
+    const txt = PREG.ctx === "viaje"
+      ? `¿Quieres que te avisemos de promociones y de mascotas perdidas en ${m}?`
+      : `Si se pierde una mascota en <b>${m}</b>, te enteras al momento y puedes ayudar a encontrarla.`;
+    c = `${ico}<p class="av-tit">${tit}</p><p class="av-txt">${txt}</p>${PREG.ctx==="viaje"?"":`<p class="av-txt" style="opacity:.85;font-size:.95rem">También te avisamos de promociones.</p>`}
+      ${comp?'<div style="flex:1"></div>':'<div style="height:10px"></div>'}${btn("Sí, quiero avisos","pedirPermiso()")}<button class="av-no" onclick="cerrarPreg()">Ahora no</button>`;
+  } else if(PREG.estado === "esperando"){
+    c = `<p class="av-tit">Último paso 👇</p><p class="av-txt">Tu celular te va a preguntar. Toca <b>Permitir</b> para recibir los avisos.</p>
+      <div class="av-demo"><p>¿Permitir que <b>PetMTY</b> te envíe notificaciones?</p><div class="bts"><span style="opacity:.6">No permitir</span><span class="si">Permitir</span></div></div>
+      <p class="av-txt" style="font-size:.9rem;opacity:.85">El aviso puede salir arriba o en medio de la pantalla.</p>
+      ${comp?'<div style="flex:1"></div>':''}<button class="av-no" onclick="pedirPermiso()">No me apareció nada</button><button class="av-no" onclick="cerrarPreg()">Ahora no</button>`;
+  } else if(PREG.estado === "listo"){
+    c = `${ico}<p class="av-tit">¡Listo! 🎉</p><p class="av-txt">Te avisaremos si se pierde una mascota en ${m}.</p>`;
+  } else if(PREG.estado === "no"){
+    c = `${ico}<p class="av-tit">No se activaron</p><p class="av-txt">No pasa nada. Puedes activarlos cuando quieras desde <b>Inicio</b> o <b>Perfil</b>.</p>${comp?'<div style="flex:1"></div>':''}${btn("Entendido","cerrarPreg()")}`;
+  } else {
+    c = `${ico}<p class="av-tit">Tus avisos están apagados</p><p class="av-txt">Para activarlos ve a los <b>Ajustes</b> de tu celular → <b>Apps</b> → <b>PetMTY</b> → <b>Notificaciones</b>.</p>${comp?'<div style="flex:1"></div>':''}${btn("Entendido","cerrarPreg()")}`;
+  }
+  return comp
+    ? `<div class="av-capa av-completa" role="dialog" aria-modal="true"><div class="av-cont">${c}</div></div>`
+    : `<div class="av-capa av-fondo" role="dialog" aria-modal="true" onclick="if(event.target===this)cerrarPreg()"><div class="av-hoja"><div class="av-asa"></div>${c}</div></div>`;
+}
+/* Recordatorio al volver a la app después de pedir un traslado */
+function revisarViaje(){ if(S.usuario && av().viaje){ av().viaje = false; guardar(); preguntar("hoja","viaje"); } }
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") setTimeout(revisarViaje, 600); });
+
 /* ---------- Enlaces directos (para notificaciones): petmty.mx/app/#tienda, #alerta-rocky ---------- */
 function slug(t){ return String(t).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); }
 function abrirEnlace(){
@@ -583,6 +670,7 @@ function abrirEnlace(){
 }
 window.addEventListener("hashchange", abrirEnlace);
 if(!abrirEnlace()) render();
+setTimeout(revisarViaje, 800);
 if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
