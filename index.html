@@ -249,7 +249,7 @@ function terminarRegistro(){
   if(!temp.municipio) return toast("Elige tu municipio");
   S.usuario = {nombre:temp.nombre, municipio:temp.municipio, colonia:temp.colonia, alertas:temp.alertas, desde:new Date().toISOString()};
   guardar(); vista="inicio"; sub=null; render(); toast("¡Bienvenido a PetMTY! 🐾");
-  sincronizarAvisos(); if(temp.alertas&&OS&&AV.soportado&&!AV.permiso) activarAvisos();
+  sincronizarAvisos(); if(temp.alertas&&AV.soportado&&!AV.permiso) activarAvisos();
   abrirEnlace();
 }
 
@@ -263,7 +263,7 @@ function vInicio(){
     <p style="margin:0 0 14px">Cómodo, seguro y con mucho amor. Te cotizamos por WhatsApp en minutos.</p>
     <button class="btn prim" onclick="ir('pedir')">Pedir traslado</button>
   </div>
-  ${(OS&&AV.soportado&&!AV.permiso)?`<div class="tarjeta"><h2>🔔 Activa los avisos</h2><p style="margin:0 0 14px">Entérate al momento si se pierde una mascota en ${esc(u.municipio)}, y de nuestras promociones.</p><button class="btn azul" onclick="activarAvisos()">Activar avisos</button></div>`:""}
+  ${(AV.soportado&&!AV.permiso)?(AV.bloqueado?`<div class="tarjeta"><h2>🔔 Tus avisos están apagados</h2><p style="margin:0">Para enterarte si se pierde una mascota en ${esc(u.municipio)}, ve a los <b>Ajustes</b> de tu celular → <b>Apps</b> → <b>PetMTY</b> → <b>Notificaciones</b> y actívalas.</p></div>`:`<div class="tarjeta"><h2>🔔 Activa los avisos</h2><p style="margin:0 0 14px">Entérate al momento si se pierde una mascota en ${esc(u.municipio)}, y de nuestras promociones.</p><button class="btn azul" onclick="activarAvisos()">Activar avisos</button></div>`):""}
   <div class="rapidos">
     <button class="rapido" onclick="emergencia()"><span class="em">🚨</span><b>Emergencia</b><span>Llévalo rápido al vet</span></button>
     <button class="rapido" onclick="bodas()"><span class="em">💍</span><b>Bodas</b><span>Tu perro en tu boda</span></button>
@@ -493,13 +493,13 @@ function vPerfil(){
     <label for="peMun" style="margin-top:0">Municipio</label>
     <select id="peMun" onchange="S.usuario.municipio=this.value;guardar();sincronizarAvisos();toast('Municipio actualizado')">${MUNICIPIOS.map(m=>`<option ${m===u.municipio?"selected":""}>${m}</option>`).join("")}</select>
     <label for="peCol">Colonia</label><input id="peCol" type="text" value="${esc(u.colonia)}" onchange="S.usuario.colonia=this.value.trim();guardar();toast('Colonia actualizada')">
-    <div class="interruptor" style="margin-top:14px"><span>🔔 Alertas de mascotas perdidas en mi zona</span><input type="checkbox" ${u.alertas?"checked":""} onchange="S.usuario.alertas=this.checked;guardar();sincronizarAvisos();if(this.checked&&OS&&AV.soportado&&!AV.permiso)activarAvisos()"></div>
+    <div class="interruptor" style="margin-top:14px"><span>🔔 Alertas de mascotas perdidas en mi zona</span><input type="checkbox" ${u.alertas?"checked":""} onchange="S.usuario.alertas=this.checked;guardar();sincronizarAvisos();if(this.checked&&AV.soportado&&!AV.permiso)activarAvisos()"></div>
   </div>
   <div class="tarjeta">
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br>PetMTY · versión 1.1</p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br>PetMTY · versión 1.2</p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu perfil, tus mascotas y tus solicitudes de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; try{ if(OS){ OS.User.removeTags(["municipio","alertas"]); OS.User.PushSubscription.optOut(); } }catch(e){} render(); }
 
@@ -525,7 +525,13 @@ function render(){
 /* ---------- Notificaciones (OneSignal) ---------- */
 const ONESIGNAL_APP_ID = "2c0d390d-7148-478e-bf6f-731b1774dd85";
 let OS = null;
-const AV = {soportado:false, permiso:false};
+const AV = {soportado:false, permiso:false, bloqueado:false};
+function leerPermiso(){
+  AV.soportado = ("Notification" in window) && ("serviceWorker" in navigator);
+  const p = AV.soportado ? Notification.permission : "default";
+  AV.permiso = p === "granted"; AV.bloqueado = p === "denied";
+}
+leerPermiso();
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal){
   try{
@@ -538,25 +544,27 @@ OneSignalDeferred.push(async function(OneSignal){
       promptOptions: {slidedown: {prompts: [{type:"push", autoPrompt:false}]}}
     });
     OS = OneSignal;
-    AV.soportado = OneSignal.Notifications.isPushSupported();
-    AV.permiso = OneSignal.Notifications.permission;
-    OneSignal.Notifications.addEventListener("permissionChange", p => { AV.permiso = p; sincronizarAvisos(); render(); });
-    sincronizarAvisos(); render();
+    OneSignal.Notifications.addEventListener("permissionChange", () => { leerPermiso(); sincronizarAvisos(); render(); });
+    leerPermiso(); sincronizarAvisos(); render();
   }catch(e){}
 });
 /* Etiquetas para mandar por zona: municipio y si quiere alertas de mascotas perdidas */
 function sincronizarAvisos(){
   if(!OS || !S.usuario) return;
-  try{ OS.User.addTags({municipio:S.usuario.municipio, alertas:S.usuario.alertas?"si":"no"}); }catch(e){}
-}
-async function activarAvisos(){
-  if(!OS) return toast("Los avisos no están disponibles aquí");
   try{
-    await OS.Notifications.requestPermission();
-    AV.permiso = OS.Notifications.permission;
-    if(AV.permiso){ S.usuario.alertas = true; guardar(); sincronizarAvisos(); toast("¡Listo! Te avisaremos 🔔"); }
-    render();
+    if(AV.permiso) OS.User.PushSubscription.optIn();
+    OS.User.addTags({municipio:S.usuario.municipio, alertas:S.usuario.alertas?"si":"no"});
   }catch(e){}
+}
+/* Pide el permiso directo al celular (muestra la ventanita de Android/iPhone) */
+async function activarAvisos(){
+  leerPermiso();
+  if(!AV.soportado) return toast("Tu celular no permite avisos desde aquí");
+  if(AV.bloqueado){ render(); return toast("Actívalos en los ajustes de tu celular"); }
+  try{ await Notification.requestPermission(); }catch(e){}
+  leerPermiso();
+  if(AV.permiso){ S.usuario.alertas = true; guardar(); sincronizarAvisos(); toast("¡Listo! Te avisaremos 🔔"); }
+  render();
 }
 
 /* ---------- Enlaces directos (para notificaciones): petmty.mx/app/#tienda, #alerta-rocky ---------- */
