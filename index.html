@@ -232,12 +232,7 @@ const PRODUCTOS = [
              vence:"2026-11-30", municipio:"Guadalupe", direccion:"Col. Contry, Guadalupe",
              condiciones:"Perros chicos y medianos. No acumulable.", whatsapp:"528100000000",
              logo:"https://... o data:...", icono:"🛁"} */
-const CUPONES = [
-  /* CUPÓN DE PRUEBA: se quita solo 30 minutos después de verlo (y como máximo el 7 nov a las 23:59). Borrar en la próxima versión. */
-  {id:"prueba-30min", negocio:"Veterinaria de Prueba", oferta:"2x1 en consulta", codigo:"PRUEBA2X1", municipio:"Monterrey",
-   direccion:"Cupón de ejemplo", condiciones:"Este es un cupón de prueba. Desaparece 30 minutos después de verlo.",
-   icono:"🩺", duraMin:30, hasta:"2026-11-07T23:59:00-06:00"}
-];
+const CUPONES = [];
 const HORA=36e5, DIA=864e5, VIGENCIA_DIAS=7, T0=Date.now();
 /* Alertas de mascotas perdidas. Las agrega PetMTY; cada una se oculta sola a los 7 días.
    Formato: {nombre, tipo:"perro"|"gato", raza, color, sexo, edad, tamano, collar, senas,
@@ -566,7 +561,7 @@ function vPerfil(){
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br><span onclick="diagnostico()">PetMTY · versión 1.6.1</span></p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br><span onclick="diagnostico()">PetMTY · versión 1.6.2</span></p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu perfil, tus mascotas y tus solicitudes de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; try{ if(OS){ OS.User.removeTags(["municipio","alertas"]); OS.User.PushSubscription.optOut(); } }catch(e){} render(); }
 
