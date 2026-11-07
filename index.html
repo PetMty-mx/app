@@ -144,6 +144,10 @@ input::-webkit-datetime-edit{padding:0}
 .cupon .arriba .logo img{width:100%;height:100%;object-fit:cover}
 .cupon .abajo{border-top:2px dashed var(--linea);padding:16px;text-align:center}
 .cupon .codigo{border:2px dashed var(--azul);border-radius:14px;padding:10px;font-size:1.6rem;font-weight:700;letter-spacing:3px;margin:6px 0 12px;cursor:pointer}
+.cup-pedido{display:flex;align-items:center;gap:10px;background:var(--amarillo);color:#2F4A57;border-radius:16px;padding:12px 14px;margin-top:16px}
+.cup-pedido b{flex:1}
+.cup-pedido button{border:0;background:rgba(47,74,87,.12);color:#2F4A57;width:30px;height:30px;border-radius:50%;font-size:1rem;cursor:pointer}
+.tag.env{background:#2F4A57}
 .promo-vacio{display:flex;gap:12px;align-items:center;cursor:pointer}
 .promo-vacio .em{font-size:2rem}
 .alerta-card{cursor:pointer}
@@ -300,10 +304,11 @@ function elegirMun(m){ temp.colonia = $("#rCol").value; temp.alertas = $("#rAl")
 function terminarRegistro(){
   temp.colonia = $("#rCol").value.trim(); temp.alertas = $("#rAl").checked;
   if(!temp.municipio) return toast("Elige tu municipio");
-  S.vistos = {tienda: PRODUCTOS.map(p => p.id), cupones: CUPONES.map(c => c.id)}; S.usuario = {nombre:temp.nombre, municipio:temp.municipio, colonia:temp.colonia, alertas:temp.alertas, desde:new Date().toISOString()};
-  guardar(); vista="inicio"; sub=null; render();
+  S.vistos = {tienda: PRODUCTOS.map(p => p.id), cupones: CUPONES.filter(c => !c.propio).map(c => c.id)}; S.usuario = {nombre:temp.nombre, municipio:temp.municipio, colonia:temp.colonia, alertas:temp.alertas, desde:new Date().toISOString()};
+  guardar(); asegurarBienvenida(); vista="inicio"; sub=null; render();
   sincronizarAvisos();
   if(!abrirEnlace() && !preguntar("completa","registro")) toast("¡Bienvenido a PetMTY! 🐾");
+  setTimeout(revisarCupones, 900);
 }
 
 /* ---------- Inicio ---------- */
@@ -472,7 +477,7 @@ function borrarMascota(){ if(!confirm("¿Quitar a "+S.mascotas[sub].nombre+"?"))
 function vPedir(){
   if(!S.mascotas.length) return `<div class="tarjeta"><div class="vacio"><div class="em">🐾</div><p>Primero registra a tu mascota para que sepamos a quién llevamos.</p></div>
     <button class="btn prim" onclick="ir('mascotas');editarMascota(-1)">+ Agregar mascota</button></div>`;
-  if(temp.pedido===undefined){ const u=S.usuario; temp={pedido:true,mascotas:[0],viaje:"Sencillo",compania:"",origen:"",destino:DESTINO_PEND||"",fecha:"",notas:""}; DESTINO_PEND=""; }
+  if(temp.pedido===undefined){ const u=S.usuario; temp={pedido:true,mascotas:[0],viaje:"Sencillo",compania:"",origen:"",destino:DESTINO_PEND||"",fecha:"",notas:"",cupon:CUPON_PEND||""}; DESTINO_PEND=""; CUPON_PEND=""; }
   return `<div class="tarjeta">
     <label style="margin-top:0">¿Quién viaja?</label>
     <div class="opciones">${S.mascotas.map((m,i)=>`<button type="button" class="${temp.mascotas.includes(i)?"on":""}" onclick="leerPedido();togMascota(${i})">${emo(m.tipo)} ${esc(m.nombre)}</button>`).join("")}</div>
@@ -484,6 +489,7 @@ function vPedir(){
     <label for="pDes">¿A dónde va?</label><input id="pDes" type="text" value="${esc(temp.destino)}" placeholder="Ej. Estética Huellitas, San Pedro">
     <label for="pFec">Día y hora</label><input id="pFec" type="datetime-local" value="${esc(temp.fecha)}">
     <label for="pNot">Notas <small>(opcional)</small></label><textarea id="pNot" placeholder="Algo que debamos saber">${esc(temp.notas)}</textarea>
+    ${temp.cupon?`<div class="cup-pedido"><span style="font-size:1.4rem">🎁</span><b>Cupón ${esc(temp.cupon)} aplicado · 10% en tu primer traslado</b><button aria-label="Quitar cupón" onclick="leerPedido();temp.cupon='';render()">✕</button></div>`:""}
     <div style="margin-top:20px"><button class="btn wa" onclick="enviarPedido()">${ICO.wa} Cotizar por WhatsApp</button></div>
     <p class="muted" style="text-align:center;font-size:.9rem;margin:12px 0 0">Te llega a WhatsApp con todos los datos para cotizarte rápido.</p>
   </div>
@@ -501,6 +507,7 @@ function enviarPedido(){
   ms.forEach(m=>{ t+=`${emo(m.tipo)} ${m.nombre} · ${m.tipo==="gato"?"gato":"perro"} ${m.tamano}${m.pelo?", pelo "+m.pelo:""}\n`; if(m.caracter) t+=`   📝 ${m.caracter}\n`; if(m.notas) t+=`   💊 ${m.notas}\n`; });
   t+=`${temp.compania==="Solo"?(ms.length>1?"🐾 Viajan solos":"🐾 Viaja solo"):(ms.length>1?"👤 Viajan con acompañante":"👤 Viaja con acompañante")}\n📍 Origen: ${temp.origen.trim()}\n📍 Destino: ${temp.destino.trim()}\n📅 ${fechaBonita(temp.fecha)}\n🔁 Viaje: ${temp.viaje}`;
   if(temp.notas.trim()) t+=`\n🗒️ ${temp.notas.trim()}`;
+  if(temp.cupon){ t+=`\n\n🎁 Quiero usar mi cupón ${temp.cupon} (10% en mi primer traslado)`; if(S.bienvenida) S.bienvenida.enviado = true; }
   S.viajes.push({mascotas:ms.map(m=>m.nombre).join(", "),destino:temp.destino.trim(),cuando:temp.fecha?new Date(temp.fecha).toLocaleString("es-MX",{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}):"",enviado:Date.now()});
   av().viaje = true; guardar(); temp={}; location.href=wa(t);
 }
@@ -554,7 +561,7 @@ function vPerfil(){
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br><span onclick="diagnostico()">PetMTY · versión 1.5</span></p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br><span onclick="diagnostico()">PetMTY · versión 1.6</span></p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu perfil, tus mascotas y tus solicitudes de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; try{ if(OS){ OS.User.removeTags(["municipio","alertas"]); OS.User.PushSubscription.optOut(); } }catch(e){} render(); }
 
@@ -648,7 +655,8 @@ const fechaCorta = f => new Date(f + "T12:00:00").toLocaleDateString("es-MX",{da
 const logoCupon = c => c.logo ? `<img src="${esc(c.logo)}" alt="">` : (c.icono || "🎁");
 function tarjetaPromo(c){
   const k = CUPONES.indexOf(c);
-  return `<button class="promo" onclick="verCupon(${k})">${cuponVisto(c)?"":`<span class="tag">Nuevo</span>`}
+  const env = c.propio && S.bienvenida && S.bienvenida.enviado;
+  return `<button class="promo" onclick="verCupon(${k})">${env?`<span class="tag env">Enviado ✓</span>`:cuponVisto(c)?"":`<span class="tag">Nuevo</span>`}
     <div class="neg"><span class="logo">${logoCupon(c)}</span><span>${esc(c.negocio)}</span></div>
     <p class="of">${esc(c.oferta)}</p>
     <p class="vig">${c.municipio?esc(c.municipio)+" · ":""}${c.vence?"Vence "+fechaCorta(c.vence):"Sin fecha límite"}</p>
@@ -669,14 +677,28 @@ function verCupon(k){ desde = vista === "cupon" ? desde : vista; vista = "cupon"
 function vCupon(){
   const c = CUPONES[sub]; if(!c) return "";
   return `<div class="cupon"><div class="arriba"><div class="logo">${logoCupon(c)}</div><div>${esc(c.negocio)}</div><div style="font-size:1.9rem;font-weight:700;line-height:1.15">${esc(c.oferta)}</div></div>
-    <div class="abajo">${c.codigo?`<p class="muted" style="margin:0">Muestra este código en el negocio</p><div class="codigo" onclick="copiarCodigo('${esc(c.codigo)}')" title="Tocar para copiar">${esc(c.codigo)}</div>`:""}
+    <div class="abajo">${c.codigo?`<p class="muted" style="margin:0">${c.propio?"Tu código":"Muestra este código en el negocio"}</p><div class="codigo" onclick="copiarCodigo('${esc(c.codigo)}')" title="Tocar para copiar">${esc(c.codigo)}</div>`:""}
     <p class="muted" style="margin:0;line-height:1.6">${c.direccion?"📍 "+esc(c.direccion)+"<br>":""}${c.vence?"📅 Válido hasta el "+new Date(c.vence+"T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"long"})+"<br>":""}${c.condiciones?esc(c.condiciones):""}</p></div></div>
-    ${c.whatsapp?`<a class="btn wa" href="https://wa.me/${esc(c.whatsapp)}?text=${encodeURIComponent("Hola, vengo de PetMTY 🐾 y quiero usar el cupón "+(c.codigo||c.oferta))}">${ICO.wa} Agendar con ${esc(c.negocio)}</a>`:""}
-    <button class="btn claro" onclick="llevarA(${sub})">🚐 Te llevamos con PetMTY</button>`;
+    ${c.propio ? `${S.bienvenida&&S.bienvenida.enviado?`<div class="caduca" style="margin:0 0 12px"><span>✓</span><span><b>Ya lo enviaste en una cotización.</b> Si al final no viajas, puedes usarlo en tu próximo traslado.</span></div>`:""}<button class="btn prim" onclick="usarCupon(${sub})">🚐 Usarlo en mi traslado</button>` : `${c.whatsapp?`<a class="btn wa" href="https://wa.me/${esc(c.whatsapp)}?text=${encodeURIComponent("Hola, vengo de PetMTY 🐾 y quiero usar el cupón "+(c.codigo||c.oferta))}">${ICO.wa} Agendar con ${esc(c.negocio)}</a>`:""}
+    <button class="btn claro" onclick="llevarA(${sub})">🚐 Te llevamos con PetMTY</button>`}`;
 }
 let DESTINO_PEND = "";
 function llevarA(k){ const c = CUPONES[k]; DESTINO_PEND = c.direccion ? c.negocio + ", " + c.direccion : c.negocio; ir("pedir"); }
 function copiarCodigo(t){ try{ navigator.clipboard.writeText(t); toast("Código copiado 📋"); }catch(e){} }
+/* Cupón de bienvenida de PetMTY: 10% en el primer traslado, 30 días desde el registro
+   (o desde que lo ve por primera vez quien ya tenía la app). Se usa al cotizar; se quita al vencer. */
+const BIENVENIDA = {id:"bienvenido10", propio:true, negocio:"PetMTY", oferta:"10% en tu primer traslado", codigo:"BIENVENIDO10", icono:"🎁",
+  condiciones:"Válido en tu primer traslado con PetMTY. Se aplica al cotizar por WhatsApp. Un cupón por persona."};
+function asegurarBienvenida(){
+  if(!S.usuario) return;
+  if(!S.bienvenida){ S.bienvenida = {inicio: Date.now(), enviado:false}; guardar(); }
+  const f = new Date(S.bienvenida.inicio + 30*864e5);
+  BIENVENIDA.vence = f.getFullYear() + "-" + String(f.getMonth()+1).padStart(2,"0") + "-" + String(f.getDate()).padStart(2,"0");
+  if(!CUPONES.includes(BIENVENIDA)) CUPONES.unshift(BIENVENIDA);
+}
+let CUPON_PEND = "";
+function usarCupon(k){ CUPON_PEND = CUPONES[k].codigo; ir("pedir"); }
+
 /* Hoja "¡Tienes un cupón nuevo!" una sola vez por cupón al abrir la app */
 let PROMO = null;
 function revisarCupones(){
@@ -689,7 +711,7 @@ function htmlPromo(){
   const c = CUPONES[PROMO];
   return `<div class="av-capa av-fondo" role="dialog" aria-modal="true" onclick="if(event.target===this){PROMO=null;render()}"><div class="av-hoja"><div class="av-asa"></div>
     <div class="av-ico" style="background:var(--amarillo)"><span style="font-size:2.2rem">${c.icono||"🎁"}</span></div>
-    <p class="av-tit">¡Tienes un cupón nuevo!</p><p class="av-txt"><b>${esc(c.oferta)}</b> en ${esc(c.negocio)}${c.vence?" · Vence "+fechaCorta(c.vence):""}</p>
+    <p class="av-tit">${c.propio?"¡Tienes un regalo de bienvenida!":"¡Tienes un cupón nuevo!"}</p><p class="av-txt"><b>${esc(c.oferta)}</b>${c.propio?"":" en "+esc(c.negocio)}${c.vence?" · Vence "+fechaCorta(c.vence):""}</p>
     <div style="height:8px"></div><button class="btn azul" onclick="const k=PROMO;PROMO=null;verCupon(k)">Ver cupón</button><button class="av-no" onclick="PROMO=null;render()">Ahora no</button></div></div>`;
 }
 
@@ -727,12 +749,12 @@ function pedirPermiso(modo){
   PREG = Object.assign(PREG || {modo:modo||"hoja"}, {estado:"esperando"}); render();
   Promise.resolve(prom).then(() => {
     leerPermiso();
-    if(AV.permiso){ S.usuario.alertas = true; guardar(); sincronizarAvisos(); PREG.estado = "listo"; render(); setTimeout(() => { if(PREG && PREG.estado === "listo"){ PREG = null; render(); } }, 1800); }
+    if(AV.permiso){ S.usuario.alertas = true; guardar(); sincronizarAvisos(); PREG.estado = "listo"; render(); setTimeout(() => { if(PREG && PREG.estado === "listo"){ PREG = null; render(); setTimeout(revisarCupones, 400); } }, 1800); }
     else if(AV.bloqueado){ PREG.estado = "bloqueado"; render(); }
     else { PREG.estado = "no"; render(); }
   });
 }
-function cerrarPreg(){ PREG = null; render(); }
+function cerrarPreg(){ PREG = null; render(); setTimeout(revisarCupones, 400); }
 function htmlPreg(){
   if(!PREG) return "";
   const u = S.usuario, m = esc(u.municipio), comp = PREG.modo === "completa";
@@ -786,6 +808,7 @@ function abrirEnlace(){
   return false;
 }
 window.addEventListener("hashchange", abrirEnlace);
+asegurarBienvenida();
 if(!abrirEnlace()) render();
 setTimeout(revisarViaje, 800);
 setTimeout(revisarCupones, 1200);
