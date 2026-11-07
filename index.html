@@ -232,7 +232,12 @@ const PRODUCTOS = [
              vence:"2026-11-30", municipio:"Guadalupe", direccion:"Col. Contry, Guadalupe",
              condiciones:"Perros chicos y medianos. No acumulable.", whatsapp:"528100000000",
              logo:"https://... o data:...", icono:"🛁"} */
-const CUPONES = [];
+const CUPONES = [
+  /* CUPÓN DE PRUEBA: se quita solo 30 minutos después de verlo (y como máximo el 7 nov a las 23:59). Borrar en la próxima versión. */
+  {id:"prueba-30min", negocio:"Veterinaria de Prueba", oferta:"2x1 en consulta", codigo:"PRUEBA2X1", municipio:"Monterrey",
+   direccion:"Cupón de ejemplo", condiciones:"Este es un cupón de prueba. Desaparece 30 minutos después de verlo.",
+   icono:"🩺", duraMin:30, hasta:"2026-11-07T23:59:00-06:00"}
+];
 const HORA=36e5, DIA=864e5, VIGENCIA_DIAS=7, T0=Date.now();
 /* Alertas de mascotas perdidas. Las agrega PetMTY; cada una se oculta sola a los 7 días.
    Formato: {nombre, tipo:"perro"|"gato", raza, color, sexo, edad, tamano, collar, senas,
@@ -305,7 +310,7 @@ function terminarRegistro(){
   temp.colonia = $("#rCol").value.trim(); temp.alertas = $("#rAl").checked;
   if(!temp.municipio) return toast("Elige tu municipio");
   S.vistos = {tienda: PRODUCTOS.map(p => p.id), cupones: CUPONES.filter(c => !c.propio).map(c => c.id)}; S.usuario = {nombre:temp.nombre, municipio:temp.municipio, colonia:temp.colonia, alertas:temp.alertas, desde:new Date().toISOString()};
-  guardar(); asegurarBienvenida(); vista="inicio"; sub=null; render();
+  guardar(); asegurarBienvenida(); relojCupones(); vista="inicio"; sub=null; render();
   sincronizarAvisos();
   if(!abrirEnlace() && !preguntar("completa","registro")) toast("¡Bienvenido a PetMTY! 🐾");
   setTimeout(revisarCupones, 900);
@@ -561,7 +566,7 @@ function vPerfil(){
     <a class="btn claro" href="${wa("Hola, tengo una duda sobre la app de PetMTY")}">${ICO.wa} Ayuda por WhatsApp</a>
     <button class="btn peligro" onclick="borrarCuenta()">Borrar mi cuenta</button>
   </div>
-  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br><span onclick="diagnostico()">PetMTY · versión 1.6</span></p>`;
+  <p class="muted" style="text-align:center;font-size:.85rem"><a href="https://petmty.mx/privacidad/" style="color:inherit">Aviso de privacidad</a><br><span onclick="diagnostico()">PetMTY · versión 1.6.1</span></p>`;
 }
 function borrarCuenta(){ if(!confirm("Se borrarán tu perfil, tus mascotas y tus solicitudes de este celular. ¿Seguro?"))return; S={usuario:null,mascotas:[],viajes:[]}; guardar(); temp={}; try{ if(OS){ OS.User.removeTags(["municipio","alertas"]); OS.User.PushSubscription.optOut(); } }catch(e){} render(); }
 
@@ -647,8 +652,22 @@ async function diagnostico(){
 }
 
 /* ---------- Promos y cupones ---------- */
-const cuponesVigentes = () => CUPONES.filter(c => !c.vence || Date.now() < Date.parse(c.vence + "T23:59:59"))
-  .sort((a,b) => (b.municipio===S.usuario.municipio) - (a.municipio===S.usuario.municipio));
+function cuponVivo(c){
+  const now = Date.now();
+  if(c.vence && now >= Date.parse(c.vence + "T23:59:59")) return false;
+  if(c.hasta && now >= Date.parse(c.hasta)) return false;
+  if(c.duraMin){ const t = ((S.vistos||{}).cuponT||{})[c.id]; if(t && now - t > c.duraMin*6e4) return false; }
+  return true;
+}
+/* Orden: nuevos sin ver → de su municipio → resto; el de bienvenida ya enviado va al final */
+const pesoCupon = c => (c.propio && S.bienvenida && S.bienvenida.enviado) ? 3 : !cuponVisto(c) ? 0 : (c.municipio===S.usuario.municipio || c.propio) ? 1 : 2;
+const cuponesVigentes = () => CUPONES.filter(cuponVivo).sort((a,b) => pesoCupon(a) - pesoCupon(b));
+/* Arranca el reloj de los cupones con duración (ej. 30 min) la primera vez que se ven */
+function relojCupones(){
+  if(!S.usuario) return; const v = vistos(); v.cuponT = v.cuponT || {}; let cambio = false;
+  CUPONES.forEach(c => { if(c.duraMin && !v.cuponT[c.id]){ v.cuponT[c.id] = Date.now(); cambio = true; } });
+  if(cambio) guardar();
+}
 const cuponVisto = c => (vistos().cupones || []).includes(c.id);
 function marcarCupon(c){ const v = vistos(); v.cupones = v.cupones || []; if(!v.cupones.includes(c.id)){ v.cupones.push(c.id); guardar(); } }
 const fechaCorta = f => new Date(f + "T12:00:00").toLocaleDateString("es-MX",{day:"numeric",month:"short"});
@@ -666,12 +685,18 @@ function seccionPromos(){
   const cs = cuponesVigentes();
   if(!cs.length) return `<div class="tarjeta promo-vacio" role="button" tabindex="0" onclick="ir('cupones')"><span class="em">🎁</span><div><b>Promos y cupones</b><p class="muted" style="margin:2px 0 0;font-size:.9rem">Descuentos en veterinarias, estéticas y más. ¡Muy pronto!</p></div></div>`;
   return `<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 2px 8px"><h2 style="margin:0;font-size:1.15rem">🎁 Promos para ti</h2><button class="av-no" style="padding:4px;margin:0;text-decoration:none;color:var(--azul-osc);font-weight:600" onclick="ir('cupones')">Ver todas</button></div>
-  <div class="promos">${cs.map(tarjetaPromo).join("")}</div>`;
+  <div class="promos" onscroll="promosMover(this)">${cs.map(tarjetaPromo).join("")}</div>
+  ${cs.length>1?`<div class="puntos-gal" id="pp" style="margin:0 0 14px">${cs.map((_,i)=>`<i class="${i?"":"on"}"></i>`).join("")}</div>`:""}`;
 }
 function vCupones(){
   const cs = cuponesVigentes();
   if(!cs.length) return `<div class="tarjeta" style="text-align:center"><div class="vacio"><div class="em">🎁</div><b style="display:block;font-size:1.25rem;color:var(--texto)">¡Muy pronto!</b><p>Aquí encontrarás descuentos en veterinarias, estéticas, guarderías y más para tu mascota. Te avisaremos cuando haya nuevos. 🐾</p></div></div>`;
   return cs.map(c => `<div style="margin-bottom:12px">${tarjetaPromo(c)}</div>`).join("").replace(/class="promo"/g,'class="promo" style="width:100%"');
+}
+function promosMover(el){
+  const c = el.firstElementChild; if(!c) return;
+  const i = Math.round(el.scrollLeft / (c.offsetWidth + 10));
+  document.querySelectorAll("#pp i").forEach((p,j) => p.classList.toggle("on", i===j));
 }
 function verCupon(k){ desde = vista === "cupon" ? desde : vista; vista = "cupon"; sub = k; marcarCupon(CUPONES[k]); render(); window.scrollTo(0,0); }
 function vCupon(){
@@ -786,7 +811,7 @@ function htmlPreg(){
 }
 /* Recordatorio al volver a la app después de pedir un traslado */
 function revisarViaje(){ if(S.usuario && av().viaje){ av().viaje = false; guardar(); preguntar("hoja","viaje"); } }
-document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ setTimeout(revisarViaje, 600); setTimeout(revisarCupones, 900); } });
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible"){ relojCupones(); if(vista==="inicio"||vista==="cupones") render(); setTimeout(revisarViaje, 600); setTimeout(revisarCupones, 900); } });
 
 /* ---------- Enlaces directos (para notificaciones): petmty.mx/app/#tienda, #alerta-rocky ---------- */
 function slug(t){ return String(t).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); }
@@ -808,7 +833,7 @@ function abrirEnlace(){
   return false;
 }
 window.addEventListener("hashchange", abrirEnlace);
-asegurarBienvenida();
+asegurarBienvenida(); relojCupones();
 if(!abrirEnlace()) render();
 setTimeout(revisarViaje, 800);
 setTimeout(revisarCupones, 1200);
